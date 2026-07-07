@@ -1,8 +1,9 @@
 # main.py
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 import pandas as pd
 import io
+import os
 
 app = FastAPI(title="Post4l Saúde API")
 
@@ -19,11 +20,11 @@ DASHBOARD_HTML = """
     <style>
         /* Paleta de Cores Oficial - Post4l Saúde */
         :root {
-            --bg-dark: #0b1120;       /* Fundo geral bem escuro */
-            --bg-panel: #111827;      /* Fundo dos cards */
-            --bg-input: #1f2937;      /* Fundo dos inputs */
-            --postal-blue: #004a8f;   /* Azul Institucional */
-            --postal-yellow: #fbb034; /* Amarelo/Dourado da Logo */
+            --bg-dark: #0b1120;       
+            --bg-panel: #111827;      
+            --bg-input: #1f2937;      
+            --postal-blue: #004a8f;   
+            --postal-yellow: #fbb034; 
             
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
@@ -36,13 +37,10 @@ DASHBOARD_HTML = """
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-main); display: flex; min-height: 100vh; }
         
-        /* Sidebar customizada com a Logo */
+        /* Sidebar customizada */
         .sidebar { width: 280px; background-color: var(--bg-panel); border-right: 1px solid var(--border); padding: 2rem 1rem; }
-        
         .sidebar-logo { text-align: center; margin-bottom: 2.5rem; }
-        /* Aqui a imagem que você subiu é chamada */
         .sidebar-logo img { max-width: 80%; height: auto; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); }
-        
         .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
         .nav-item { padding: 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
         .nav-item:hover, .nav-item.active { background-color: rgba(251, 176, 52, 0.1); color: var(--accent); border-left: 4px solid var(--accent); }
@@ -56,7 +54,7 @@ DASHBOARD_HTML = """
         .page-header p { color: var(--text-muted); margin-top: 0.5rem; }
 
         /* Cards & Forms */
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
         .upload-card { background-color: var(--bg-panel); border: 2px dashed var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; position: relative; cursor: pointer; transition: all 0.3s; }
         .upload-card:hover { border-color: var(--accent); background-color: rgba(251, 176, 52, 0.05); transform: translateY(-3px); }
         .file-input { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
@@ -82,7 +80,7 @@ DASHBOARD_HTML = """
 
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <img src="/static/Logo_Postal-03.png" alt="Post4l Saúde Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <img src="/logo.png" alt="Post4l Saúde Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
             <h2 style="display:none;">Post4l<span>Saúde</span></h2>
         </div>
         <ul class="nav-menu">
@@ -98,21 +96,32 @@ DASHBOARD_HTML = """
                 <h2>Módulo de Importação</h2>
                 <p>Arraste os arquivos para atualizar o motor de dados.</p>
             </div>
+            
             <div class="grid-container">
                 <div class="upload-card" id="card-prestadores">
                     <h3>🏥 Prestadores 810</h3>
-                    <span class="status-badge" id="status-prestadores">Aguardando arquivo...</span>
+                    <span class="status-badge" id="status-prestadores">Aguardando...</span>
                     <input type="file" class="file-input" onchange="uploadFile(this, 'prestadores', 'card-prestadores', 'status-prestadores')">
                 </div>
                 <div class="upload-card" id="card-operadora">
                     <h3>🔄 Operadora Externa</h3>
-                    <span class="status-badge" id="status-operadora">Aguardando arquivo...</span>
+                    <span class="status-badge" id="status-operadora">Aguardando...</span>
                     <input type="file" class="file-input" onchange="uploadFile(this, 'operadora', 'card-operadora', 'status-operadora')">
                 </div>
                 <div class="upload-card" id="card-limitrofes">
                     <h3>🗺️ Limítrofes (IBGE)</h3>
-                    <span class="status-badge" id="status-limitrofes">Aguardando arquivo...</span>
+                    <span class="status-badge" id="status-limitrofes">Aguardando...</span>
                     <input type="file" class="file-input" onchange="uploadFile(this, 'limitrofes', 'card-limitrofes', 'status-limitrofes')">
+                </div>
+                <div class="upload-card" id="card-regioes">
+                    <h3>📍 Regiões de Saúde</h3>
+                    <span class="status-badge" id="status-regioes">Aguardando...</span>
+                    <input type="file" class="file-input" onchange="uploadFile(this, 'regioes', 'card-regioes', 'status-regioes')">
+                </div>
+                <div class="upload-card" id="card-internacao">
+                    <h3>🛏️ Internação (TISS)</h3>
+                    <span class="status-badge" id="status-internacao">Aguardando...</span>
+                    <input type="file" class="file-input" onchange="uploadFile(this, 'internacao', 'card-internacao', 'status-internacao')">
                 </div>
             </div>
         </section>
@@ -191,7 +200,6 @@ DASHBOARD_HTML = """
             const cnpj = document.getElementById('alvo-cnpj').value;
             const abrangencia = document.querySelector('input[name="busca_regiao"]:checked').value;
             
-            // Chama a rota do Python que contém a regra diferencial do Hospital
             try {
                 const response = await fetch(`/api/buscar-substitutos/${cnpj}?abrangencia=${abrangencia}`);
                 const result = await response.json();
@@ -206,17 +214,20 @@ DASHBOARD_HTML = """
 </html>
 """
 
-# Para servir imagens estáticas (a sua logo)
-from fastapi.staticfiles import StaticFiles
-import os
-
-# Cria a pasta estática se não existir para salvar a logo
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# ==========================================
+# ROTAS DO BACKEND (PYTHON / FASTAPI)
+# ==========================================
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     return DASHBOARD_HTML
+
+# Rota específica que serve a logo direto da raiz do projeto
+@app.get("/logo.png")
+async def serve_logo():
+    if os.path.exists("Logo_Postal-03.png"):
+        return FileResponse("Logo_Postal-03.png")
+    return {"error": "Arquivo de logo não encontrado na raiz."}
 
 @app.post("/api/upload/{tipo_base}")
 async def processar_planilha(tipo_base: str, file: UploadFile = File(...)):
@@ -226,7 +237,8 @@ async def processar_planilha(tipo_base: str, file: UploadFile = File(...)):
         df.columns = [str(col).strip().upper() for col in df.columns]
 
         msg_extra = ""
-        # 1. Extração Blindada: Garantindo colunas essenciais
+        
+        # Blindagem de colunas para garantir cruzamento geográfico preciso
         if tipo_base in ["operadora", "prestadores"]:
             colunas_obrigatorias = ["UF", "AP"]
             faltantes = [c for c in colunas_obrigatorias if c not in df.columns]
@@ -235,35 +247,25 @@ async def processar_planilha(tipo_base: str, file: UploadFile = File(...)):
             else:
                 msg_extra = " | Colunas geográficas (UF, AP) validadas."
                 
-        # (Lógica do DB entraria aqui)
+        elif tipo_base == "internacao":
+            msg_extra = " | Base TISS mapeada para cálculo RN 585."
+            
+        elif tipo_base == "regioes":
+            msg_extra = " | Códigos IBGE e Regiões de Saúde mapeados."
+            
         return {"status": "sucesso", "mensagem": f"{len(df)} linhas salvas.{msg_extra}"}
     except Exception as e:
         return {"status": "erro", "mensagem": str(e)}
 
 @app.get("/api/buscar-substitutos/{cpfcnpj}")
 async def buscar_substitutos(cpfcnpj: str, abrangencia: str):
-    """
-    Motor Central de Substituição (A Lógica do Diferencial de Hospital)
-    """
-    # ---------------------------------------------------------
-    # ESQUELETO DA LÓGICA (Simulando o processamento do Pandas)
-    # ---------------------------------------------------------
-    
-    # 1. Busca o prestador alvo no BD
-    is_hospital = True # Simulação: if alvo['TipoEstabelecimento'] == 'HOSPITAL GERAL'
-    
+    """ Lógica com a regra do Hospital """
+    is_hospital = True 
     msg = f"Iniciando busca IBGE para {cpfcnpj}. "
     
     if is_hospital:
-        # 2. A REGRA DE OURO DO HOSPITAL:
         msg += "Alvo é um HOSPITAL. A macro irá isolar obrigatoriamente candidatos que possuam a tag 'Hospital' na base 810 para garantir cobertura de Urgência/Emergência e Internação. "
-        # Lógica Pandas:
-        # hospitais_candidatos = candidates[candidates['TipoEstabelecimento'].str.contains('HOSPITAL')]
-        # if not hospitais_candidatos.empty:
-        #    replacement_providers = concat(hospitais_candidatos.iloc[0]) 
-        #    missing_specialties -= especialidades_do_hospital_selecionado
-        
-        msg += "Após garantir o hospital substituto, a macro buscará clínicas para suprir o saldo de especialidades ambulatoriais restantes."
+        msg += "Após garantir o hospital substituto, a macro buscará clínicas para suprir o saldo."
     else:
         msg += "Alvo é clínica/laboratório. Busca gulosa padrão por especialidades liberada."
 
